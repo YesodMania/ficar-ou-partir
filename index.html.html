@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficar ou Partir? — Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600;1,700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --rust:    #c1440e;
+  --rust-lt: #e05a20;
+  --gold:    #b8962e;
+  --gold-lt: #d4ae48;
+  --forest:  #1e3a1e;
+  --forest-md:#2d4a2d;
+  --forest-lt:#3d6b3d;
+  --ink:     #0d0b08;
+  --paper:   #f4efe4;
+  --mist:    rgba(244,239,228,0.55);
+  --white:   #ffffff;
+  --radius:  2px;
+}
+
+html,body{width:100%;height:100%;overflow:hidden;background:#0d0b08;cursor:none}
+
+/* ── CURSOR ── */
+#cur{
+  position:fixed;width:10px;height:10px;border-radius:50%;
+  background:var(--rust-lt);pointer-events:none;z-index:99999;
+  transform:translate(-50%,-50%);
+  transition:transform .15s ease,width .25s ease,height .25s ease,opacity .3s;
+  mix-blend-mode:screen;
+}
+#cur-ring{
+  position:fixed;width:36px;height:36px;border-radius:50%;
+  border:1px solid rgba(193,68,14,.4);pointer-events:none;z-index:99998;
+  transform:translate(-50%,-50%);
+  transition:transform .08s ease,left .12s ease,top .12s ease,width .3s,height .3s,opacity .3s;
+}
+body.hovering #cur{width:6px;height:6px}
+body.hovering #cur-ring{width:52px;height:52px;border-color:rgba(193,68,14,.7)}
+
+/* ── PROGRESS ── */
+#prog{
+  position:fixed;top:0;left:0;height:2px;z-index:9990;
+  background:linear-gradient(90deg,var(--rust),var(--gold));
+  transition:width .7s cubic-bezier(.77,0,.18,1);
+  box-shadow:0 0 12px rgba(193,68,14,.6);
+}
+
+/* ── SLIDE COUNT ── */
+#ct{
+  position:fixed;bottom:2.2rem;right:2.5rem;z-index:9990;
+  font-family:'Outfit',sans-serif;font-size:.65rem;font-weight:400;
+  letter-spacing:.18em;color:rgba(244,239,228,.35);
+  transition:color .5s;
+}
+
+/* ── NAV DOTS ── */
+#ndots{
+  position:fixed;right:1.4rem;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:.55rem;z-index:9990;
+}
+.nd{
+  width:4px;height:4px;border-radius:50%;
+  background:rgba(244,239,228,.2);cursor:none;
+  transition:all .4s cubic-bezier(.77,0,.18,1);
+}
+.nd.on{background:var(--rust);transform:scale(2)}
+
+/* ── HINT ── */
+#hint{
+  position:fixed;bottom:2.2rem;left:50%;transform:translateX(-50%);
+  font-family:'Outfit',sans-serif;font-size:.6rem;letter-spacing:.22em;
+  color:rgba(244,239,228,.22);z-index:9990;text-transform:uppercase;
+  transition:opacity 1.2s;white-space:nowrap;
+}
+#hint.gone{opacity:0;pointer-events:none}
+
+/* ── FULLSCREEN ── */
+#fs{
+  position:fixed;top:1.6rem;right:2rem;z-index:9990;
+  font-family:'Outfit',sans-serif;font-size:.6rem;letter-spacing:.14em;
+  color:rgba(244,239,228,.28);background:none;border:none;cursor:none;
+  text-transform:uppercase;transition:color .3s;padding:.3rem .5rem;
+}
+#fs:hover{color:rgba(244,239,228,.7)}
+
+/* ══════════════════════════════════════
+   DECK & SLIDES
+══════════════════════════════════════ */
+#deck{position:relative;width:100%;height:100%}
+
+.sl{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0;overflow:hidden;
+  opacity:0;pointer-events:none;
+  transition:opacity .55s ease;
+}
+.sl.on{opacity:1;pointer-events:all}
+
+/* shared bg layer */
+.bg{
+  position:absolute;inset:0;
+  background-size:cover;background-position:center;
+  transition:transform 8s ease;
+}
+.sl.on .bg{transform:scale(1.04)}
+.bg-overlay{position:absolute;inset:0}
+
+/* content wrapper */
+.content{
+  position:relative;z-index:2;
+  padding:clamp(2rem,5vh,4rem) clamp(2.5rem,6vw,6rem);
+  padding-top:0;
+}
+
+/* eyebrow label */
+.ey{
+  font-family:'Outfit',sans-serif;font-size:.68rem;font-weight:500;
+  letter-spacing:.28em;text-transform:uppercase;
+  color:var(--gold-lt);margin-bottom:1.4rem;
+  display:flex;align-items:center;gap:.8rem;opacity:0;
+}
+.ey::before{content:'';display:inline-block;width:28px;height:1px;background:var(--gold)}
+
+/* main display heading */
+.disp{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(3.6rem,9vw,7.5rem);
+  font-weight:700;line-height:.92;
+  letter-spacing:-.01em;color:var(--white);
+  opacity:0;transform:translateY(22px);
+}
+.disp em{font-style:italic;color:var(--gold-lt)}
+.disp .rust{color:var(--rust-lt)}
+
+/* body text — high readability */
+.body{
+  font-family:'Outfit',sans-serif;font-size:clamp(.92rem,1.5vw,1.05rem);
+  font-weight:300;line-height:1.85;
+  color:rgba(244,239,228,.82);
+  max-width:520px;opacity:0;transform:translateY(12px);
+  margin-top:1.6rem;
+}
+
+/* deco line */
+.dline{
+  width:48px;height:1.5px;
+  background:linear-gradient(90deg,var(--rust),var(--gold));
+  margin:1.4rem 0;opacity:0;
+  box-shadow:0 0 8px rgba(193,68,14,.4);
+}
+
+/* ── SLIDE-SPECIFIC LAYOUTS ── */
+
+/* ═══════ S1: CAPA ═══════ */
+#s1 .bg{
+  background-image:url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=80');
+  background-position:center 40%;
+}
+#s1 .bg-overlay{
+  background:linear-gradient(
+    to top,
+    rgba(13,11,8,.96) 0%,
+    rgba(13,11,8,.7) 45%,
+    rgba(19,30,19,.4) 100%
+  );
+}
+#s1 .top-bar{
+  position:absolute;top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,var(--rust) 0%,var(--gold) 50%,var(--forest-lt) 100%);
+  z-index:3;box-shadow:0 0 20px rgba(193,68,14,.35);
+}
+#s1 .content{padding-bottom:clamp(3rem,6vh,5rem)}
+#s1 .capa-top{
+  position:absolute;top:clamp(1.5rem,4vh,3rem);left:clamp(2.5rem,6vw,6rem);
+  z-index:3;opacity:0;
+  font-family:'Outfit',sans-serif;font-size:.62rem;
+  letter-spacing:.25em;color:rgba(244,239,228,.3);text-transform:uppercase;
+}
+#s1 .big-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(5rem,14vw,12rem);
+  font-weight:700;line-height:.85;letter-spacing:-.02em;
+  color:var(--white);overflow:hidden;
+}
+#s1 .bt-line{overflow:hidden;display:block}
+#s1 .bt-inner{display:inline-block;transform:translateY(110%)}
+#s1 .bt-rust{color:var(--rust-lt);font-style:italic}
+#s1 .sub{
+  font-family:'Outfit',sans-serif;font-size:clamp(.9rem,1.6vw,1.08rem);
+  font-weight:300;line-height:1.8;
+  color:rgba(244,239,228,.6);max-width:480px;
+  margin-top:2rem;opacity:0;transform:translateY(10px);
+}
+#s1 .foot{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  border-top:1px solid rgba(244,239,228,.1);
+  padding-top:1.2rem;margin-top:2.5rem;
+  opacity:0;
+}
+#s1 .foot-left{
+  font-family:'Outfit',sans-serif;font-size:.62rem;
+  letter-spacing:.15em;color:rgba(244,239,228,.28);
+  line-height:2;text-transform:uppercase;
+}
+#s1 .city{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.5rem;font-weight:600;
+  color:var(--forest-lt);letter-spacing:.08em;
+}
+
+/* ═══════ S2: PROBLEMA ═══════ */
+#s2 .bg{
+  background-image:url('https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=80');
+  background-position:center 60%;
+}
+#s2 .bg-overlay{
+  background:linear-gradient(
+    160deg,
+    rgba(13,11,8,.97) 0%,
+    rgba(30,58,30,.85) 60%,
+    rgba(13,11,8,.92) 100%
+  );
+}
+#s2 .content{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4vw;align-items:end;
+  padding-bottom:clamp(3rem,6vh,5rem);
+}
+#s2 .left{}
+#s2 .right{padding-bottom:.5rem}
+#s2 .causes{display:flex;flex-direction:column;gap:2px;opacity:0;transform:translateX(20px)}
+.cause-row{
+  display:flex;align-items:center;gap:1rem;
+  background:rgba(244,239,228,.04);
+  border-left:2px solid var(--rust);
+  padding:.9rem 1.2rem;
+  backdrop-filter:blur(4px);
+}
+.cause-row .c-num{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.8rem;font-weight:300;
+  color:rgba(193,68,14,.4);line-height:1;flex-shrink:0;width:2.2rem;
+}
+.cause-row .c-txt{
+  font-family:'Outfit',sans-serif;font-size:.92rem;
+  font-weight:400;color:rgba(244,239,228,.8);line-height:1.4;
+}
+#s2 .cities{
+  display:flex;flex-wrap:wrap;gap:.5rem;
+  margin-top:1.6rem;opacity:0;
+}
+.city-tag{
+  font-family:'Outfit',sans-serif;font-size:.65rem;
+  font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+  padding:.38rem .85rem;
+  border:1px solid rgba(244,239,228,.2);
+  color:rgba(244,239,228,.5);
+  backdrop-filter:blur(4px);
+  transition:all .25s;cursor:none;
+}
+.city-tag:hover{border-color:var(--gold);color:var(--gold-lt)}
+
+/* ═══════ S3: DOCUMENTÁRIO ═══════ */
+#s3 .bg{
+  background-image:url('https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?w=1920&q=80');
+  background-position:center 30%;
+}
+#s3 .bg-overlay{
+  background:linear-gradient(
+    to bottom,
+    rgba(13,11,8,.6) 0%,
+    rgba(13,11,8,.88) 50%,
+    rgba(13,11,8,.98) 100%
+  );
+}
+#s3 .content{padding-bottom:clamp(2.5rem,5vh,4rem)}
+#s3 .chaps{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:2px;margin-top:2rem;
+}
+.chap{
+  background:rgba(13,11,8,.5);
+  border-top:1px solid rgba(244,239,228,.08);
+  padding:1.4rem 1.1rem 1.6rem;
+  position:relative;overflow:hidden;cursor:none;
+  transition:background .4s;
+  backdrop-filter:blur(6px);
+  opacity:0;transform:translateY(16px);
+}
+.chap:hover{background:rgba(30,58,30,.35)}
+.chap .ch-n{
+  font-family:'Cormorant Garamond',serif;
+  font-size:3.5rem;font-weight:300;
+  color:rgba(184,150,46,.15);line-height:1;
+  transition:color .4s;
+}
+.chap:hover .ch-n{color:rgba(184,150,46,.5)}
+.chap .ch-t{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-size:1rem;
+  color:var(--gold-lt);margin:.5rem 0 .7rem;
+  line-height:1.35;
+}
+.chap .ch-i{
+  font-family:'Outfit',sans-serif;font-size:.68rem;
+  font-weight:300;color:rgba(244,239,228,.35);
+  line-height:2;letter-spacing:.02em;
+  opacity:0;transform:translateY(4px);
+  transition:opacity .3s .05s,transform .3s .05s;
+}
+.chap:hover .ch-i{opacity:1;transform:none}
+.chap .ch-line{
+  position:absolute;bottom:0;left:0;right:0;
+  height:2px;
+  background:linear-gradient(90deg,var(--rust),var(--gold));
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .45s cubic-bezier(.77,0,.18,1);
+}
+.chap:hover .ch-line{transform:scaleX(1)}
+
+/* ═══════ S4: OMNICHANNEL ═══════ */
+#s4 .bg{
+  background-image:url('https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1920&q=80');
+  background-position:center 50%;
+}
+#s4 .bg-overlay{
+  background:linear-gradient(
+    135deg,
+    rgba(19,30,19,.97) 0%,
+    rgba(30,58,30,.92) 50%,
+    rgba(13,11,8,.95) 100%
+  );
+}
+#s4 .content{padding-bottom:clamp(3rem,6vh,5rem)}
+#s4 .cards{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1.5rem;margin-top:2.2rem;
+}
+.ccard{
+  background:rgba(244,239,228,.04);
+  border:1px solid rgba(244,239,228,.09);
+  padding:2rem 1.6rem 2.2rem;
+  position:relative;overflow:hidden;
+  backdrop-filter:blur(8px);
+  opacity:0;transform:translateY(18px);
+  transition:background .3s,border-color .3s;cursor:none;
+}
+.ccard:hover{
+  background:rgba(244,239,228,.08);
+  border-color:rgba(244,239,228,.18);
+}
+.ccard .accent-top{
+  position:absolute;top:0;left:0;right:0;height:2px;
+}
+.ccard:nth-child(1) .accent-top{background:linear-gradient(90deg,var(--rust),var(--rust-lt))}
+.ccard:nth-child(2) .accent-top{background:linear-gradient(90deg,var(--gold),var(--gold-lt))}
+.ccard:nth-child(3) .accent-top{background:linear-gradient(90deg,var(--forest-lt),#7ab87a)}
+.ccard .ico{font-size:1.8rem;margin-bottom:1.1rem;display:block}
+.ccard .cn{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.5rem;font-weight:600;
+  color:var(--white);margin-bottom:1rem;
+}
+.ccard .ci{
+  font-family:'Outfit',sans-serif;font-size:.72rem;
+  font-weight:400;color:rgba(244,239,228,.5);
+  line-height:2.1;letter-spacing:.04em;text-transform:uppercase;
+}
+
+/* ═══════ S5: PÚBLICO ═══════ */
+#s5 .bg{
+  background-image:url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80');
+  /* young person contemplative — abstract */
+  background-position:center;
+}
+#s5 .bg-overlay{
+  background:linear-gradient(
+    to right,
+    rgba(13,11,8,.98) 0%,
+    rgba(13,11,8,.85) 55%,
+    rgba(193,68,14,.12) 100%
+  );
+}
+#s5 .content{
+  display:grid;grid-template-columns:1.1fr 1fr;
+  gap:5vw;align-items:end;
+  padding-bottom:clamp(3rem,6vh,5rem);
+}
+#s5 .pub-list{
+  display:flex;flex-direction:column;gap:0;
+  margin-top:1.8rem;opacity:0;transform:translateY(10px);
+}
+.prow{
+  display:flex;align-items:center;gap:1.1rem;
+  padding:1rem 0;
+  border-bottom:1px solid rgba(244,239,228,.1);
+}
+.prow .pr-icon{
+  font-family:'Cormorant Garamond',serif;
+  font-size:1.2rem;font-style:italic;
+  color:var(--gold);flex-shrink:0;width:1.2rem;text-align:center;
+}
+.prow .pr-txt{
+  font-family:'Outfit',sans-serif;font-size:.97rem;
+  font-weight:300;color:rgba(244,239,228,.82);
+}
+.prow .pr-tag{
+  margin-left:auto;
+  font-family:'Outfit',sans-serif;font-size:.58rem;
+  letter-spacing:.15em;text-transform:uppercase;
+  color:rgba(244,239,228,.28);white-space:nowrap;
+  padding-left:.8rem;
+}
+#s5 .stat-panel{
+  background:rgba(193,68,14,.1);
+  border:1px solid rgba(193,68,14,.25);
+  padding:2rem 1.8rem;
+  backdrop-filter:blur(10px);
+  opacity:0;transform:translateX(20px);
+}
+.sn{
+  font-family:'Cormorant Garamond',serif;
+  font-size:4rem;font-weight:700;
+  color:var(--white);line-height:1;
+}
+.sn span{font-size:2rem;color:var(--rust-lt)}
+.sl-{
+  font-family:'Outfit',sans-serif;font-size:.68rem;
+  font-weight:300;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(244,239,228,.45);margin-top:.3rem;margin-bottom:1.8rem;
+}
+
+/* ═══════ S6: SOLUÇÃO ═══════ */
+#s6 .bg{
+  background-image:url('https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=1920&q=80');
+  background-position:center 40%;
+}
+#s6 .bg-overlay{
+  background:linear-gradient(
+    to right,
+    rgba(193,68,14,.92) 0%,
+    rgba(193,68,14,.75) 40%,
+    rgba(13,11,8,.9) 100%
+  );
+}
+#s6 .content{padding-bottom:clamp(3rem,6vh,5rem)}
+#s6 .brand-name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(4rem,11vw,9.5rem);
+  font-weight:700;line-height:.85;
+  color:var(--white);
+  opacity:0;transform:translateY(22px);
+}
+#s6 .brand-name em{
+  font-style:italic;
+  color:rgba(255,255,255,.35);
+  font-size:.42em;display:block;
+  margin-bottom:.4rem;letter-spacing:.02em;
+}
+#s6 .objs{
+  display:grid;grid-template-columns:repeat(2,1fr);
+  gap:2px;margin-top:2.5rem;max-width:520px;
+}
+.obj{
+  background:rgba(0,0,0,.2);
+  padding:1.2rem 1.1rem;
+  border-top:1px solid rgba(255,255,255,.12);
+  opacity:0;transform:translateY(10px);
+  backdrop-filter:blur(4px);
+}
+.obj .o-ic{font-size:1.3rem;display:block;margin-bottom:.4rem}
+.obj .o-tx{
+  font-family:'Outfit',sans-serif;font-size:.75rem;
+  font-weight:400;letter-spacing:.06em;text-transform:uppercase;
+  color:rgba(255,255,255,.7);line-height:1.6;
+}
+
+/* ═══════ S7: FECHAMENTO ═══════ */
+#s7 .bg{
+  background-image:url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80');
+  background-position:center;
+}
+#s7 .bg-overlay{
+  background:radial-gradient(
+    ellipse at center,
+    rgba(13,11,8,.7) 0%,
+    rgba(13,11,8,.95) 100%
+  );
+}
+#s7{justify-content:center;align-items:center}
+#s7 .content{
+  text-align:center;display:flex;flex-direction:column;
+  align-items:center;padding-bottom:0;
+}
+#s7 .q{
+  font-family:'Outfit',sans-serif;font-size:clamp(.85rem,1.4vw,1rem);
+  font-weight:300;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(244,239,228,.38);opacity:0;transform:translateY(10px);
+  margin-bottom:1.5rem;
+}
+#s7 .big-close{
+  font-family:'Cormorant Garamond',serif;
+  font-size:clamp(3.5rem,9vw,7.5rem);
+  font-weight:700;line-height:.88;
+  color:var(--white);text-align:center;
+  opacity:0;transform:translateY(20px);
+}
+#s7 .big-close em{color:var(--gold-lt);font-style:italic}
+#s7 .close-body{
+  font-family:'Outfit',sans-serif;font-size:clamp(.9rem,1.5vw,1.05rem);
+  font-weight:300;line-height:1.85;
+  color:rgba(244,239,228,.5);max-width:460px;
+  opacity:0;transform:translateY(10px);margin-top:2rem;
+}
+#s7 .htag{
+  font-family:'Outfit',sans-serif;font-size:.65rem;
+  font-weight:500;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);opacity:0;margin-top:2.5rem;
+}
+#s7 .top-bar{
+  position:absolute;top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,var(--rust),var(--gold),var(--forest-lt));
+  box-shadow:0 0 20px rgba(193,68,14,.35);z-index:3;
+}
+
+/* ── GRAIN ── */
+#grain{
+  position:fixed;inset:0;pointer-events:none;z-index:9989;opacity:.03;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media(max-width:768px){
+  #s2 .content,#s5 .content{grid-template-columns:1fr}
+  #s2 .right,#s5 .stat-panel{display:none}
+  #s3 .chaps{grid-template-columns:1fr 1fr;gap:1px}
+  #s4 .cards{grid-template-columns:1fr}
+  #s6 .objs{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div id="cur"></div>
+<div id="cur-ring"></div>
+<div id="grain"></div>
+<div id="prog" style="width:0"></div>
+<div id="ct">01 / 07</div>
+<nav id="ndots"></nav>
+<div id="hint">Espaço · Seta · Scroll para navegar</div>
+<button id="fs">⛶ tela cheia</button>
+
+<div id="deck">
+
+<!-- ═══════════════════ S1: CAPA ═══════════════════ -->
+<section class="sl" id="s1">
+  <div class="bg"></div>
+  <div class="bg-overlay"></div>
+  <div class="top-bar"></div>
+  <div class="capa-top">Projeto Jornalístico · Pitch · 2025</div>
+  <div class="content">
+    <div class="big-title">
+      <span class="bt-line"><span class="bt-inner">Ficar</span></span>
+      <span class="bt-line"><span class="bt-inner bt-rust">ou Partir?</span></span>
+    </div>
+    <p class="sub">O êxodo dos jovens em uma cidade que ensina a sonhar, mas nem sempre consegue reter seus talentos.</p>
+    <div class="foot">
+      <div class="foot-left">
+        Documentário + Plataforma Digital<br>
+        Estratégia Omnichannel · Jornalismo
+      </div>
+      <div class="city">Lages — SC</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ S2: PROBLEMA ═══════════════════ -->
+<section class="sl" id="s2">
+  <div class="bg"></div>
+  <div class="bg-overlay"></div>
+  <div class="content">
+    <div class="left">
+      <div class="ey">O Problema</div>
+      <h2 class="disp">Lages forma.<br><em>Mas não retém.</em></h2>
+      <div class="dline"></div>
+      <p class="body">A cidade possui tradição, identidade cultural e sólidas instituições de ensino. Mesmo assim, muitos jovens partem em busca de oportunidades que o mercado regional ainda não oferece — e no Jornalismo a situação é especialmente evidente.</p>
+      <div class="cities">
+        <span class="city-tag">Florianópolis</span>
+        <span class="city-tag">Joinville</span>
+        <span class="city-tag">Curitiba</span>
+        <span class="city-tag">Porto Alegre</span>
+        <span class="city-tag">São Paulo</span>
+      </div>
+    </div>
+    <div class="right">
+      <div class="causes">
+        <div class="cause-row"><div class="c-num">01</div><div class="c-txt">Melhores salários</div></div>
+        <div class="cause-row"><div class="c-num">02</div><div class="c-txt">Oportunidades de carreira</div></div>
+        <div class="cause-row"><div class="c-num">03</div><div class="c-txt">Especialização profissional</div></div>
+        <div class="cause-row"><div class="c-num">04</div><div class="c-txt">Mercado de trabalho mais amplo</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ S3: DOCUMENTÁRIO ═══════════════════ -->
+<section class="sl" id="s3">
+  <div class="bg"></div>
+  <div class="bg-overlay"></div>
+  <div class="content">
+    <div class="ey">Produto Principal</div>
+    <h2 class="disp">Documentário<br>em <em>5 Capítulos</em></h2>
+    <div class="chaps">
+      <div class="chap"><div class="ch-n">01</div><div class="ch-t">A cidade que forma</div><div class="ch-i">História de Lages<br>Universidades<br>Ingresso no superior</div><div class="ch-line"></div></div>
+      <div class="chap"><div class="ch-n">02</div><div class="ch-t">O momento da escolha</div><div class="ch-i">Entrevistas com acadêmicos<br>"Ficar ou ir embora?"</div><div class="ch-line"></div></div>
+      <div class="chap"><div class="ch-n">03</div><div class="ch-t">Os que partiram</div><div class="ch-i">Ex-alunos fora de Lages<br>Relatos de oportunidades</div><div class="ch-line"></div></div>
+      <div class="chap"><div class="ch-n">04</div><div class="ch-t">Os que ficaram</div><div class="ch-i">Carreira em Lages<br>Desafios e conquistas</div><div class="ch-line"></div></div>
+      <div class="chap"><div class="ch-n">05</div><div class="ch-t">O futuro</div><div class="ch-i">Especialistas<br>Empresários<br>Poder público</div><div class="ch-line"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ S4: OMNICHANNEL ═══════════════════ -->
+<section class="sl" id="s4">
+  <div class="bg"></div>
+  <div class="bg-overlay"></div>
+  <div class="content">
+    <div class="ey">Distribuição</div>
+    <h2 class="disp">Estratégia<br><em>Omnichannel</em></h2>
+    <div class="cards">
+      <div class="ccard"><div class="accent-top"></div><span class="ico">🗞️</span><div class="cn">Portal Digital</div><div class="ci">Reportagens Especiais<br>Entrevistas Completas<br>Gráficos e Dados</div></div>
+      <div class="ccard"><div class="accent-top"></div><span class="ico">🎙️</span><div class="cn">Podcast</div><div class="ci">Histórias Aprofundadas<br>Relatos em 1ª Pessoa<br>Episódios Temáticos</div></div>
+      <div class="ccard"><div class="accent-top"></div><span class="ico">📱</span><div class="cn">Redes Sociais</div><div class="ci">Vídeos Curtos<br>Depoimentos<br>Enquetes Interativas</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ S5: PÚBLICO ═══════════════════ -->
+<section class="sl" id="s5">
+  <div class="bg"></div>
+  <div class="bg-overlay"></div>
+  <div class="content">
+    <div class="left">
+      <div class="ey">Público-Alvo</div>
+      <h2 class="disp">Para quem<br><em>falamos?</em></h2>
+      <div class="pub-list">
+        <div class="prow"><div class="pr-icon">→</div><div class="pr-txt">Estudantes do Ensino Médio</div><div class="pr-tag">Jovens</div></div>
+        <div class="prow"><div class="pr-icon">→</div><div class="pr-txt">Universitários</div><div class="pr-tag">Jovens</div></div>
+        <div class="prow"><div class="pr-icon">→</div><div class="pr-txt">Recém-formados</div><div class="pr-tag">Jovens</div></div>
+        <div class="prow"><div class="pr-icon">→</div><div class="pr-txt">Instituições de Ensino</div><div class="pr-tag">Instituições</div></div>
+        <div class="prow"><div class="pr-icon">→</div><div class="pr-txt">Empresas Regionais</div><div class="pr-tag">Mercado</div></div>
+        <div class="prow"><div class="pr-icon">→</div><div class="pr-txt">Poder Público</div><div class="pr-tag">Gestão</div></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="stat-panel">
+        <div class="sn"><span id="cnt1">0</span><span>%</span></div>
+        <div class="sl-">dos formandos migram<br>nos primeiros 2 anos</div>
+        <div class="sn"><span id="cnt2">3</span></div>
+        <div class="sl-">universidades formando<br>anualmente em Lages</div>
+        <div class="dline" style="margin-top:1.5rem"></div>
+        <div style="font-family:'Outfit',sans-serif;font-size:.75rem;font-weight:300;color:rgba(244,239,228,.45);line-height:1.8">
+          UNIPLAC · UDESC · IFSC
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ S6: SOLUÇÃO ═══════════════════ -->
+<section class="sl" id="s6">
+  <div class="bg"></div>
+  <div class="bg-overlay"></div>
+  <div class="content">
+    <div class="ey" style="color:rgba(255,255,255,.5)">A Solução</div>
+    <div class="brand-name"><em>Plataforma Digital</em>Conexão<br>Serra</div>
+    <div class="dline" style="background:rgba(255,255,255,.25);box-shadow:none"></div>
+    <p class="body" style="color:rgba(255,255,255,.7)">Uma plataforma que aproxima universidades, empresas e jovens profissionais — criando pontes onde antes só havia partidas.</p>
+    <div class="objs">
+      <div class="obj"><span class="o-ic">📢</span><div class="o-tx">Divulgar oportunidades locais</div></div>
+      <div class="obj"><span class="o-ic">🗺️</span><div class="o-tx">Mapear talentos regionais</div></div>
+      <div class="obj"><span class="o-ic">🌱</span><div class="o-tx">Estimular a permanência</div></div>
+      <div class="obj"><span class="o-ic">💼</span><div class="o-tx">Fortalecer o mercado local</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ S7: FECHAMENTO ═══════════════════ -->
+<section class="sl" id="s7">
+  <div class="bg"></div>
+  <div class="bg-overlay"></div>
+  <div class="top-bar"></div>
+  <div class="content">
+    <p class="q">Porque a pergunta não é só pessoal —</p>
+    <h2 class="big-close">é de toda<br>uma <em>cidade.</em></h2>
+    <p class="close-body">Ficar ou Partir? é mais do que um documentário. É um espelho que Lages precisa ver — e uma conversa que não pode mais ser adiada.</p>
+    <p class="htag">#FicarOuPartir · Conexão Serra · Lages — SC</p>
+  </div>
+</section>
+
+</div><!-- /deck -->
+
+<script>
+// ─────────────────────────────────────────────────────────
+// A abordagem correta: animações via CSS @keyframes + classes
+// JS só adiciona/remove classes. Zero setTimeout para animar.
+// ─────────────────────────────────────────────────────────
+
+const TOTAL = 7;
+let cur = 0, busy = false;
+
+const slides  = Array.from(document.querySelectorAll('.sl'));
+const prog    = document.getElementById('prog');
+const ct      = document.getElementById('ct');
+const hint    = document.getElementById('hint');
+const ndots   = document.getElementById('ndots');
+const curEl   = document.getElementById('cur');
+const curRing = document.getElementById('cur-ring');
+const fsBtn   = document.getElementById('fs');
+
+// Inject keyframes + animation classes into <head>
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+  /* Cada elemento animável tem um delay via --d e usa estas keyframes */
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(18px) } to { opacity:1; transform:none } }
+  @keyframes fadeIn   { from { opacity:0 }                             to { opacity:1 } }
+  @keyframes slideUp  { from { transform:translateY(110%) }            to { transform:none } }
+  @keyframes bgZoom   { from { transform:scale(1) }                    to { transform:scale(1.04) } }
+
+  /* Classe que dispara animação — atribuída pelo JS no momento certo */
+  .anim-fadeup  { animation: fadeUp  var(--dur,650ms) var(--ease,cubic-bezier(.4,0,.2,1)) var(--d,0ms) both }
+  .anim-fadein  { animation: fadeIn  var(--dur,500ms) var(--ease,ease)                    var(--d,0ms) both }
+  .anim-slideup { animation: slideUp var(--dur,900ms) cubic-bezier(.77,0,.18,1)           var(--d,0ms) both }
+  .anim-bgzoom  { animation: bgZoom  8s ease forwards }
+
+  /* Estado base — invisible, sem transição de CSS inline */
+  .sl .animable { opacity:0; }
+  .sl .animable.slide-text { transform:translateY(18px) }
+  .sl .bt-inner { transform:translateY(110%) }
+`;
+document.head.appendChild(styleSheet);
+
+// Marca todos os elementos animáveis com a classe base
+function markAnimables(){
+  slides.forEach(s=>{
+    ['.ey','.disp','.body','.dline','.sub','.foot','.capa-top',
+     '.causes','.cities','.pub-list','.stat-panel','.brand-name',
+     '.q','.big-close','.close-body','.htag'].forEach(sel=>{
+      const el=s.querySelector(sel);
+      if(el){ el.classList.add('animable'); if(sel!=='.ey') el.classList.add('slide-text'); }
+    });
+    s.querySelectorAll('.chap,.ccard,.obj').forEach(el=>el.classList.add('animable','slide-text'));
+  });
+}
+markAnimables();
+
+// Remove todas as classes de animação de um slide (reset limpo)
+function clearAnims(s){
+  s.querySelectorAll('.anim-fadeup,.anim-fadein,.anim-slideup,.anim-bgzoom').forEach(el=>{
+    el.classList.remove('anim-fadeup','anim-fadein','anim-slideup','anim-bgzoom');
+  });
+  // bg reset
+  const bg=s.querySelector('.bg');
+  if(bg) bg.classList.remove('anim-bgzoom');
+
+  // bt-inner reset
+  if(s.id==='s1') s.querySelectorAll('.bt-inner').forEach(el=>{ el.style.transform='translateY(110%)'; });
+
+  // countup reset
+  if(s.id==='s5'){ const el=document.getElementById('cnt1'); if(el) el.textContent='0'; }
+}
+
+// Aplica animação num elemento: adiciona a classe depois de setar o delay via CSS var
+function anim(el, cls, delayMs, durMs=650){
+  if(!el) return;
+  el.style.setProperty('--d', delayMs+'ms');
+  el.style.setProperty('--dur', durMs+'ms');
+  el.classList.add(cls);
+}
+
+// ─── Por-slide: define quais elementos animam e em que ordem ───
+
+function animIn(idx){
+  const s = slides[idx];
+  const bg = s.querySelector('.bg');
+  if(bg) anim(bg, 'anim-bgzoom', 0, 8000);
+
+  const fns = [aS1,aS2,aS3,aS4,aS5,aS6,aS7];
+  fns[idx]?.(s);
+}
+
+function aS1(s){
+  anim(s.querySelector('.capa-top'), 'anim-fadein',  100, 500);
+  s.querySelectorAll('.bt-inner').forEach((el,i)=>{
+    el.style.transform='translateY(110%)';
+    // Para slideUp precisamos remover o transform inline e deixar a keyframe agir
+    el.style.setProperty('--d',(220+i*160)+'ms');
+    el.style.setProperty('--dur','900ms');
+    el.classList.add('anim-slideup');
+  });
+  anim(s.querySelector('.sub'),  'anim-fadeup', 560, 700);
+  anim(s.querySelector('.foot'), 'anim-fadein', 820, 600);
+}
+
+function aS2(s){
+  anim(s.querySelector('.ey'),     'anim-fadeup',  80,  500);
+  anim(s.querySelector('.disp'),   'anim-fadeup',  180, 700);
+  anim(s.querySelector('.dline'),  'anim-fadein',  380, 400);
+  anim(s.querySelector('.body'),   'anim-fadeup',  430, 600);
+  anim(s.querySelector('.cities'), 'anim-fadeup',  580, 500);
+  anim(s.querySelector('.causes'), 'anim-fadeup',  260, 650);
+}
+
+function aS3(s){
+  anim(s.querySelector('.ey'),   'anim-fadein', 80,  400);
+  anim(s.querySelector('.disp'), 'anim-fadeup', 180, 680);
+  s.querySelectorAll('.chap').forEach((c,i)=> anim(c,'anim-fadeup', 380+i*80, 520));
+}
+
+function aS4(s){
+  anim(s.querySelector('.ey'),   'anim-fadein', 80,  400);
+  anim(s.querySelector('.disp'), 'anim-fadeup', 180, 680);
+  s.querySelectorAll('.ccard').forEach((c,i)=> anim(c,'anim-fadeup', 360+i*110, 580));
+}
+
+function aS5(s){
+  anim(s.querySelector('.ey'),          'anim-fadein', 80,  400);
+  anim(s.querySelector('.disp'),        'anim-fadeup', 180, 700);
+  anim(s.querySelector('.pub-list'),    'anim-fadeup', 420, 600);
+  anim(s.querySelector('.stat-panel'),  'anim-fadeup', 340, 650);
+  s.querySelectorAll('.dline').forEach((d,i)=> anim(d,'anim-fadein', 540+i*80, 400));
+  // countup depois do fade do painel
+  setTimeout(()=>countUp('cnt1',47), 700);
+}
+
+function aS6(s){
+  anim(s.querySelector('.ey'),          'anim-fadein', 80,  400);
+  anim(s.querySelector('.brand-name'),  'anim-fadeup', 180, 800);
+  anim(s.querySelector('.dline'),       'anim-fadein', 450, 400);
+  anim(s.querySelector('.body'),        'anim-fadeup', 500, 600);
+  s.querySelectorAll('.obj').forEach((o,i)=> anim(o,'anim-fadeup', 620+i*80, 480));
+}
+
+function aS7(s){
+  anim(s.querySelector('.q'),          'anim-fadeup', 180, 600);
+  anim(s.querySelector('.big-close'),  'anim-fadeup', 360, 820);
+  anim(s.querySelector('.dline'),      'anim-fadein', 560, 400);
+  anim(s.querySelector('.close-body'), 'anim-fadeup', 640, 600);
+  anim(s.querySelector('.htag'),       'anim-fadein', 880, 500);
+}
+
+function countUp(id, target){
+  const el=document.getElementById(id);
+  if(!el) return;
+  let n=0;
+  const iv=setInterval(()=>{
+    n=Math.min(n+Math.ceil(target/25),target);
+    el.textContent=n;
+    if(n>=target) clearInterval(iv);
+  },35);
+}
+
+// ─────────────────────────────────────────────────────────
+// NAVIGATION — única fonte de verdade, sem setTimeout aninhado
+// ─────────────────────────────────────────────────────────
+function updateUI(next){
+  prog.style.width = ((next+1)/TOTAL*100)+'%';
+  ct.textContent   = String(next+1).padStart(2,'0')+' / '+String(TOTAL).padStart(2,'0');
+  dots.forEach((d,i)=>d.classList.toggle('on',i===next));
+}
+
+function goTo(next){
+  if(next===cur||busy||next<0||next>=TOTAL) return;
+  busy = true;
+
+  const from = slides[cur];
+  const to   = slides[next];
+
+  updateUI(next);
+
+  // PASSO 1: limpa o destino ANTES de qualquer coisa (está invisível)
+  clearAnims(to);
+
+  // PASSO 2: fade-out do atual via classe CSS (sem transition inline)
+  from.classList.add('sl-exit');
+
+  // PASSO 3: aguarda o fade-out terminar (250ms, definido no CSS abaixo)
+  from.addEventListener('animationend', function onExit(){
+    from.removeEventListener('animationend', onExit);
+    from.classList.remove('on','sl-exit');
+
+    // PASSO 4: mostra destino já limpo
+    to.classList.add('on');
+
+    // PASSO 5: um único RAF garante que o browser pintou o estado inicial
+    // antes de disparar as animações de entrada
+    requestAnimationFrame(()=>{
+      cur = next;
+      animIn(cur);
+      busy = false;
+    });
+  }, { once: true });
+}
+
+// Classe de saída declarada aqui para não poluir o CSS principal
+const exitStyle = document.createElement('style');
+exitStyle.textContent = `
+  @keyframes slExit { from { opacity:1 } to { opacity:0 } }
+  .sl-exit { animation: slExit 260ms ease forwards; pointer-events:none; }
+`;
+document.head.appendChild(exitStyle);
+
+// ─────────────────────────────────────────────────────────
+// DOTS
+// ─────────────────────────────────────────────────────────
+for(let i=0;i<TOTAL;i++){
+  const d=document.createElement('div');
+  d.className='nd';
+  d.addEventListener('click',()=>goTo(i));
+  ndots.appendChild(d);
+}
+const dots = Array.from(ndots.querySelectorAll('.nd'));
+
+// ─────────────────────────────────────────────────────────
+// CURSOR
+// ─────────────────────────────────────────────────────────
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX; my=e.clientY;
+  curEl.style.left=mx+'px'; curEl.style.top=my+'px';
+});
+(function loop(){ rx+=(mx-rx)*.1; ry+=(my-ry)*.1;
+  curRing.style.left=rx+'px'; curRing.style.top=ry+'px';
+  requestAnimationFrame(loop);
+})();
+document.querySelectorAll('.chap,.ccard,.city-tag,.nd,.prow').forEach(el=>{
+  el.addEventListener('mouseenter',()=>document.body.classList.add('hovering'));
+  el.addEventListener('mouseleave',()=>document.body.classList.remove('hovering'));
+});
+
+// ─────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────
+slides[0].classList.add('on');
+updateUI(0);
+requestAnimationFrame(()=> animIn(0));
+setTimeout(()=>hint.classList.add('gone'), 3500);
+
+// ─────────────────────────────────────────────────────────
+// EVENTOS
+// ─────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(['ArrowDown','ArrowRight',' '].includes(e.key)){ e.preventDefault(); goTo(cur+1); }
+  if(['ArrowUp','ArrowLeft'].includes(e.key))        { e.preventDefault(); goTo(cur-1); }
+});
+
+let wLock=false;
+document.addEventListener('wheel',e=>{
+  e.preventDefault();
+  if(wLock) return; wLock=true;
+  e.deltaY>0 ? goTo(cur+1) : goTo(cur-1);
+  setTimeout(()=>wLock=false, 800);
+},{passive:false});
+
+let tY=0;
+document.addEventListener('touchstart',e=>tY=e.touches[0].clientY,{passive:true});
+document.addEventListener('touchend',e=>{
+  const dy=tY-e.changedTouches[0].clientY;
+  if(Math.abs(dy)>45){ dy>0 ? goTo(cur+1) : goTo(cur-1); }
+},{passive:true});
+
+document.addEventListener('click',e=>{
+  if(e.target.closest('.chap,.ccard,.city-tag,.nd,#fs')) return;
+  e.clientX > window.innerWidth/2 ? goTo(cur+1) : goTo(cur-1);
+});
+
+fsBtn.addEventListener('click',()=>{
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+});
+document.addEventListener('fullscreenchange',()=>{
+  fsBtn.textContent = document.fullscreenElement ? '✕ sair' : '⛶ tela cheia';
+});
+</script>
+</body>
+</html>
